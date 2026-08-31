@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "datasets": {
+    "multihop_rag": {
+      "repository": "https://github.com/yixuantt/MultiHop-RAG.git",
+      "revision": "cde8e844af14b3012f20158abc2854fe8458212a",
+      "data_repository": "https://huggingface.co/datasets/yixuantt/MultiHopRAG",
+      "data_revision": "71ac0d0bd1f951d2d6b70311f7d2ae404e1ffa82",
+      "license": "ODC-BY-1.0",
+      "sha256": "2a29f729b571e4477c97a45f0a771342b9dfaa917cda067aad193b0874ad68a1",
+      "files": 45,
+      "bytes": 13484879
+    },
+    "tat_qa": {
+      "repository": "https://github.com/NExTplusplus/TAT-QA.git",
+      "revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+      "license": "CC-BY-4.0",
+      "sha256": "b8dfa5d419185bf54586912c5805924a650c158a1c8ba3114d1dcc4fe601e7c5",
+      "files": 73,
+      "bytes": 38201972
+    },
+    "rgb": {
+      "repository": "https://github.com/chen700564/RGB.git",
+      "revision": "65ec39e40e7dc9abb50e9bf1b4f32be3f6f16615",
+      "license": "CC-BY-NC-SA-4.0",
+      "sha256": "9edfde7b19c1d411e26c71536d1f13d3b0a465a10caf143bf355d0549ee8f280",
+      "files": 16,
+      "bytes": 36571604
+    }
+  }
+}

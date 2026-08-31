@@ -1,0 +1,92 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+.coverage
+coverage.json
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.env.local
+*.pem
+*.key
+credentials.json
+secrets.yaml
+
+# IDE and operating-system files
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Runtime state and local data
+uploads/
+data/
+*.sqlite
+*.sqlite3
+*.db
+*.log
+logs/
+python/benchmarks/data/
+
+# Local Docker acceleration overrides
+docker-compose.override.yml
+
+# Historical implementations are outside the Python MVP release scope
+java/
+golang/
+.github/modernize/
+
+# Local interview scratchpad; the curated public guide is under docs/
+QA.md
+
+# Superseded planning/pseudocode documents; current public documentation is
+# architecture.md, benchmark-report.md, demo-guide.md and interview-guide.md.
+docs/project-plan.md
+docs/tech-deep-dive.md
+
+# Benchmark work directories and superseded ad-hoc outputs. Curated,
+# reproducible reference artifacts under results/reference remain versioned.
+python/benchmarks/results/archive/
+python/benchmarks/results/*-background/
+python/benchmarks/results/multihop-*/
+python/benchmarks/results/hybrid-*/
+python/benchmarks/results/rerank-*/
+python/benchmarks/results/slot-*/
+python/benchmarks/results/comparison-*/
+python/benchmarks/results/smoke/
+python/benchmarks/results/smoke-*
+python/benchmarks/results/reference/answers-multihop_rag.jsonl
+python/benchmarks/results/reference/retrieval.jsonl
+
+# Java/Go build output (kept for contributors who restore those directories)
+target/
+*.class
+*.jar
+*.war
+*.ear
+golang/vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out

@@ -1,0 +1,28 @@
+# Runtime dependencies. Development and benchmark extras:
+#   pip install -e ".[dev,benchmark]"
+chromadb-client==1.5.9
+confluent-kafka>=2.6,<4
+fastapi>=0.115,<1
+langchain-core>=0.3,<2
+langchain-openai>=0.3,<2
+langgraph>=0.3,<2
+langgraph-checkpoint-sqlite>=2,<4
+aiosqlite>=0.20,<1
+neo4j>=5.28,<7
+openpyxl>=3.1,<4
+openai>=1.68,<4
+pydantic>=2.10,<3
+pydantic-settings>=2.7,<3
+pymupdf>=1.25,<2
+pdfplumber>=0.11,<1
+pillow>=11,<13
+pytesseract>=0.3.13,<1
+python-docx>=1.1,<2
+python-pptx>=1.0,<2
+defusedxml>=0.7,<1
+python-multipart>=0.0.18,<1
+tiktoken>=0.8,<1
+uvicorn[standard]>=0.34,<1
+watchdog>=6,<7
+charset-normalizer>=3.4,<4
+httpx>=0.28,<1

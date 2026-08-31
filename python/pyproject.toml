@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-knowledge-hub"
+version = "0.2.0"
+description = "Python multi-agent document knowledge hub"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "chromadb-client==1.5.9",
+  "confluent-kafka>=2.6,<4",
+  "fastapi>=0.115,<1",
+  "langchain-core>=0.3,<2",
+  "langchain-openai>=0.3,<2",
+  "langgraph>=0.3,<2",
+  "langgraph-checkpoint-sqlite>=2,<4",
+  "aiosqlite>=0.20,<1",
+  "neo4j>=5.28,<7",
+  "openpyxl>=3.1,<4",
+  "openai>=1.68,<4",
+  "pydantic>=2.10,<3",
+  "pydantic-settings>=2.7,<3",
+  "pymupdf>=1.25,<2",
+  "pdfplumber>=0.11,<1",
+  "pillow>=11,<13",
+  "pytesseract>=0.3.13,<1",
+  "python-docx>=1.1,<2",
+  "python-pptx>=1.0,<2",
+  "defusedxml>=0.7,<1",
+  "python-multipart>=0.0.18,<1",
+  "tiktoken>=0.8,<1",
+  "uvicorn[standard]>=0.34,<1",
+  "watchdog>=6,<7",
+  "charset-normalizer>=3.4,<4",
+  "httpx>=0.28,<1",
+]
+
+[project.optional-dependencies]
+benchmark = ["numpy>=1.26,<3", "reportlab>=4,<5"]
+dev = [
+  "httpx>=0.28,<1",
+  "pytest>=8.3,<10",
+  "pytest-asyncio>=0.25,<2",
+  "pytest-cov>=6,<8",
+  "ruff>=0.9,<1",
+]
+
+[project.scripts]
+akh-benchmark = "benchmarks.cli:main"
+akh-admin = "admin_cli:main"
+
+[tool.setuptools]
+py-modules = ["admin_cli"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agents*", "api*", "benchmarks*", "config*", "orchestrator*", "services*", "utils*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+  "integration: requires Docker services",
+  "e2e: end-to-end API scenario",
+  "live_api: requires user-provided API credentials",
+]
+
+[tool.coverage.run]
+source = ["agents", "api", "orchestrator", "services"]
+omit = ["tests/*", "benchmarks/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 110
+exclude = ["benchmarks/data", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+ignore = ["ASYNC240", "B008"]

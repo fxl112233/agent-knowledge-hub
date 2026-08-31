@@ -1,0 +1,42 @@
+{
+  "seed": 42,
+  "chunk_size_tokens": 500,
+  "chunk_overlap_tokens": 80,
+  "top_k": 10,
+  "temperature": 0,
+  "samples": {
+    "multihop_retrieval": "all",
+    "multihop_answer": 300,
+    "tat_qa": 300,
+    "rgb": 200,
+    "parse": 70,
+    "cdc_documents": 100,
+    "cdc_events": 300
+  },
+  "thresholds": {
+    "parse_success_rate": 1.0,
+    "digital_text_f1": 0.95,
+    "clear_ocr_cer_max": 0.08,
+    "disturbed_ocr_cer_max": 0.15,
+    "table_cell_f1": 0.9,
+    "evidence_recall_at_10": 0.75,
+    "all_evidence_hit_at_10": 0.5,
+    "hybrid_gain_points": 0.05,
+    "multihop_answer_em": 0.45,
+    "multihop_token_f1": 0.65,
+    "citation_recall": 0.85,
+    "rejection_f1": 0.75,
+    "tatqa_numeric_accuracy": 0.55,
+    "tatqa_token_f1": 0.6,
+    "rgb_noise_accuracy": 0.7,
+    "rgb_integration_accuracy": 0.65,
+    "cdc_consistency": 1.0,
+    "cdc_idempotency": 1.0,
+    "unchanged_chunk_retention": 0.95,
+    "embedding_token_reduction": 0.8,
+    "median_update_speedup": 5.0,
+    "retrieval_p95_ms": 2000,
+    "api_5xx_count": 0,
+    "core_line_coverage": 0.8
+  }
+}
