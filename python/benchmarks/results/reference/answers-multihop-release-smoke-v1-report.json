@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "experiment": "release-smoke-v1",
+  "purpose": "engineering contract check; not a formal quality estimate",
+  "seed": 42,
+  "case_ids": [
+    "multihop-0196",
+    "multihop-0225",
+    "multihop-0380",
+    "multihop-0449",
+    "multihop-0661",
+    "multihop-0883",
+    "multihop-0929",
+    "multihop-1334",
+    "multihop-1963",
+    "multihop-2393"
+  ],
+  "preflight": {
+    "passed": true,
+    "model": "BAAI/bge-reranker-v2-m3",
+    "top_index": 0,
+    "result_count": 3,
+    "usage": {
+      "model": "BAAI/bge-reranker-v2-m3",
+      "calls": 1,
+      "errors": 0,
+      "retries": 0,
+      "fallbacks": 0,
+      "documents": 3,
+      "input_tokens": 66,
+      "p50_ms": 629.376,
+      "p95_ms": 629.376
+    }
+  },
+  "configuration": {
+    "comparison_tool_enabled": false,
+    "answer_max_context_chunks": 8,
+    "answer_max_context_chars": 18000,
+    "rerank_top_documents": 10
+  },
+  "completed_records": 20,
+  "expected_records": 20,
+  "missing_keys": [],
+  "checks": {
+    "complete": true,
+    "business_errors": true,
+    "rerank_fallbacks": true,
+    "structured_contract": true,
+    "citations_map_to_retrieved_chunks": true
+  },
+  "passed": true,
+  "diagnostics": {
+    "modes": {
+      "vector": {
+        "cases": 10,
+        "answerable_cases": 8,
+        "answer_em": 0.375,
+        "token_f1": 0.375,
+        "official_overlap_accuracy": 0.375,
+        "citation_precision": 0.3541666666666667,
+        "citation_recall": 0.3020833333333333,
+        "citation_f1": 0.32321428571428573,
+        "retrieval_precision": 0.2619047619047619,
+        "retrieval_recall": 0.65625,
+        "retrieval_f1": 0.37007575757575756,
+        "all_evidence_hit": 0.5,
+        "rerank_fallback_rate": 0.0,
+        "rejection_f1": 0.5,
+        "answerability_accuracy": 0.6,
+        "retrieval_p50_ms": 4509.883,
+        "retrieval_p95_ms": 6340.27385,
+        "generation_p50_ms": 11505.110499999999,
+        "generation_p95_ms": 28697.211399999997,
+        "rerank_p50_ms": 2213.593350003066,
+        "rerank_p95_ms": 2623.6664699998073,
+        "total_p50_ms": 15482.910500000002,
+        "total_p95_ms": 32587.805149999997,
+        "answer_generation_usage": {
+          "calls": 5,
+          "errors": 0,
+          "input_tokens": 23540,
+          "output_tokens": 1373,
+          "total_tokens": 24913
+        }
+      },
+      "hybrid": {
+        "cases": 10,
+        "answerable_cases": 8,
+        "answer_em": 0.375,
+        "token_f1": 0.375,
+        "official_overlap_accuracy": 0.375,
+        "citation_precision": 0.4166666666666667,
+        "citation_recall": 0.3645833333333333,
+        "citation_f1": 0.38571428571428573,
+        "retrieval_precision": 0.2739583333333333,
+        "retrieval_recall": 0.65625,
+        "retrieval_f1": 0.38106060606060604,
+        "all_evidence_hit": 0.375,
+        "rerank_fallback_rate": 0.0,
+        "rejection_f1": 0.5,
+        "answerability_accuracy": 0.6,
+        "retrieval_p50_ms": 5100.427,
+        "retrieval_p95_ms": 6025.5491999999995,
+        "generation_p50_ms": 14834.028999999999,
+        "generation_p95_ms": 31547.579399999995,
+        "rerank_p50_ms": 1969.6989000003668,
+        "rerank_p95_ms": 2621.6453150038433,
+        "total_p50_ms": 18617.2765,
+        "total_p95_ms": 35072.45169999999,
+        "answer_generation_usage": {
+          "calls": 5,
+          "errors": 0,
+          "input_tokens": 23558,
+          "output_tokens": 1344,
+          "total_tokens": 24902
+        }
+      }
+    },
+    "paired": {
+      "all_cases": 10,
+      "answerable_cases": 8,
+      "exact_match_gain": {
+        "estimate": 0.0,
+        "lower": 0.0,
+        "upper": 0.0,
+        "samples": 8
+      },
+      "token_f1_gain": {
+        "estimate": 0.0,
+        "lower": 0.0,
+        "upper": 0.0,
+        "samples": 8
+      },
+      "official_accuracy_gain": {
+        "estimate": 0.0,
+        "lower": 0.0,
+        "upper": 0.0,
+        "samples": 8
+      },
+      "citation_recall_gain": {
+        "estimate": 0.0625,
+        "lower": 0.0,
+        "upper": 0.1875,
+        "samples": 8
+      },
+      "token_f1_comparison": {
+        "improved": 0,
+        "tied": 8,
+        "worse": 0
+      }
+    },
+    "categories": {
+      "comparison_query": {
+        "vector": {
+          "cases": 3,
+          "answer_em": 0.3333333333333333,
+          "token_f1": 0.3333333333333333
+        },
+        "hybrid": {
+          "cases": 3,
+          "answer_em": 0.3333333333333333,
+          "token_f1": 0.3333333333333333
+        }
+      },
+      "inference_query": {
+        "vector": {
+          "cases": 2,
+          "answer_em": 1.0,
+          "token_f1": 1.0
+        },
+        "hybrid": {
+          "cases": 2,
+          "answer_em": 1.0,
+          "token_f1": 1.0
+        }
+      },
+      "temporal_query": {
+        "vector": {
+          "cases": 3,
+          "answer_em": 0.0,
+          "token_f1": 0.0
+        },
+        "hybrid": {
+          "cases": 3,
+          "answer_em": 0.0,
+          "token_f1": 0.0
+        }
+      }
+    }
+  },
+  "raw_results": "E:\\实习项目\\agent-knowledge-hub-main\\python\\benchmarks\\results\\reference\\answers-multihop-release-smoke-v1.jsonl",
+  "query_plan_cache": "E:\\实习项目\\agent-knowledge-hub-main\\python\\benchmarks\\results\\reference\\answers-multihop-comparison-grounded-v5-query-plans.jsonl"
+}

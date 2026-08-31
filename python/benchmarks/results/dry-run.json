@@ -1,0 +1,27 @@
+{
+  "status": "estimate_only",
+  "prepared_data_available": true,
+  "models": {
+    "llm_model": "gpt-5.6-luna",
+    "embedding_model": "BAAI/bge-m3"
+  },
+  "samples": {
+    "retrieval": 1358,
+    "answers": 1100,
+    "estimated_chunks": 2046
+  },
+  "estimated_calls": {
+    "llm_total": 5604,
+    "knowledge_extraction": 2046,
+    "query_planning": 2458,
+    "answer_generation": 1100,
+    "embedding": 4021
+  },
+  "estimated_tokens": {
+    "embedding_input": 1079016,
+    "llm_input_lower_bound": 969133,
+    "llm_output_not_priced": true
+  },
+  "estimated_embedding_cost_cny": 0.5395,
+  "warning": "LLM cost is not estimated because no trusted runtime price was configured."
+}
