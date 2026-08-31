@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-29T15:06:19Z",
+  "experiment": "multihop_rag_paired_answer_vector_vs_hybrid",
+  "complete": true,
+  "raw_result": "benchmarks\\results\\reference\\answers-multihop-paired-weighted-rrf-v2.jsonl",
+  "query_plan_cache": "benchmarks\\results\\reference\\answers-multihop-paired-weighted-rrf-v2-query-plans.jsonl",
+  "config": {
+    "documents": 100,
+    "answer_cases": 300,
+    "answerable_cases": 225,
+    "unanswerable_cases": 75,
+    "seed": 42,
+    "top_k": 10,
+    "temperature": 0,
+    "llm_model": "gpt-5.6-luna",
+    "embedding_model": "BAAI/bge-m3",
+    "chunk_size_tokens": 500,
+    "chunk_overlap_tokens": 80,
+    "rrf_constant": 60,
+    "hybrid_vector_weight": 1.0,
+    "hybrid_graph_weight": 0.85,
+    "hybrid_max_chunks_per_document": 1
+  },
+  "results": {
+    "modes": {
+      "vector": {
+        "cases": 300,
+        "answerable_cases": 225,
+        "answer_em": 0.4444444444444444,
+        "token_f1": 0.448,
+        "official_overlap_accuracy": 0.4488888888888889,
+        "citation_precision": 0.7296296296296296,
+        "citation_recall": 0.5507407407407408,
+        "citation_f1": 0.6127407407407408,
+        "rejection_f1": 0.7326732673267327,
+        "answerability_accuracy": 0.82,
+        "retrieval_p50_ms": 1782.929,
+        "retrieval_p95_ms": 2375.3387500000003,
+        "generation_p50_ms": 4839.8805,
+        "generation_p95_ms": 8570.012600000004,
+        "total_p50_ms": 6646.280000000001,
+        "total_p95_ms": 10604.2516,
+        "answer_generation_usage": {
+          "calls": 300,
+          "errors": 0,
+          "input_tokens": 1612095,
+          "output_tokens": 44651,
+          "total_tokens": 1656746
+        }
+      },
+      "hybrid": {
+        "cases": 300,
+        "answerable_cases": 225,
+        "answer_em": 0.4577777777777778,
+        "token_f1": 0.4620740740740741,
+        "official_overlap_accuracy": 0.4666666666666667,
+        "citation_precision": 0.7618518518518518,
+        "citation_recall": 0.6462962962962963,
+        "citation_f1": 0.689068783068783,
+        "rejection_f1": 0.8152173913043478,
+        "answerability_accuracy": 0.8866666666666667,
+        "retrieval_p50_ms": 1765.3964999999998,
+        "retrieval_p95_ms": 2353.083,
+        "generation_p50_ms": 5049.567,
+        "generation_p95_ms": 8798.7927,
+        "total_p50_ms": 6891.7715,
+        "total_p95_ms": 11138.113700000004,
+        "answer_generation_usage": {
+          "calls": 300,
+          "errors": 0,
+          "input_tokens": 1578204,
+          "output_tokens": 48246,
+          "total_tokens": 1626450
+        }
+      }
+    },
+    "paired": {
+      "all_cases": 300,
+      "answerable_cases": 225,
+      "exact_match_gain": {
+        "estimate": 0.013333333333333334,
+        "lower": -0.03555555555555556,
+        "upper": 0.06222222222222222,
+        "samples": 225
+      },
+      "token_f1_gain": {
+        "estimate": 0.014074074074074074,
+        "lower": -0.03555555555555556,
+        "upper": 0.06444444444444444,
+        "samples": 225
+      },
+      "official_accuracy_gain": {
+        "estimate": 0.017777777777777778,
+        "lower": -0.03555555555555556,
+        "upper": 0.06677777777777717,
+        "samples": 225
+      },
+      "citation_recall_gain": {
+        "estimate": 0.09555555555555556,
+        "lower": 0.061481481481481484,
+        "upper": 0.13149074074074069,
+        "samples": 225
+      },
+      "token_f1_comparison": {
+        "improved": 20,
+        "tied": 189,
+        "worse": 16
+      }
+    },
+    "categories": {
+      "comparison_query": {
+        "vector": {
+          "cases": 75,
+          "answer_em": 0.3333333333333333,
+          "token_f1": 0.3333333333333333
+        },
+        "hybrid": {
+          "cases": 75,
+          "answer_em": 0.36,
+          "token_f1": 0.3622222222222222
+        }
+      },
+      "inference_query": {
+        "vector": {
+          "cases": 75,
+          "answer_em": 0.8933333333333333,
+          "token_f1": 0.9039999999999999
+        },
+        "hybrid": {
+          "cases": 75,
+          "answer_em": 0.9333333333333333,
+          "token_f1": 0.944
+        }
+      },
+      "temporal_query": {
+        "vector": {
+          "cases": 75,
+          "answer_em": 0.10666666666666667,
+          "token_f1": 0.10666666666666667
+        },
+        "hybrid": {
+          "cases": 75,
+          "answer_em": 0.08,
+          "token_f1": 0.08
+        }
+      }
+    }
+  },
+  "query_plan_usage": {
+    "calls": 300,
+    "errors": 0,
+    "input_tokens": 40204,
+    "output_tokens": 54132,
+    "total_tokens": 94336
+  },
+  "current_command_usage": {
+    "chat": {
+      "calls": 900,
+      "errors": 0,
+      "input_tokens": 3230503,
+      "output_tokens": 147029,
+      "total_tokens": 3377532,
+      "latency_ms": 4859506.412
+    },
+    "embedding": {
+      "calls": 1766,
+      "input_tokens": 36096,
+      "texts": 1766,
+      "cost_cny": 0.018048
+    }
+  },
+  "notes": [
+    "EM/Token F1/official overlap are computed only on the 225 answerable cases.",
+    "Rejection F1 is computed on all 300 cases and treats unanswerable as positive.",
+    "Official overlap accuracy is lenient and is reported only for dataset compatibility.",
+    "Paired gain values are fractions; multiply by 100 for percentage points."
+  ]
+}
