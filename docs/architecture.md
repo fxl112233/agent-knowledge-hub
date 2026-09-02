@@ -26,7 +26,7 @@
                            └────────┬─────────┘
                                     │
         ┌───────────────────────────▼────────────────────────────┐
-        │ SQLite 目录/Checkpoint · Chroma 三模态向量 · Neo4j 图谱 │
+        │ SQLite 目录/FTS5/Checkpoint · Chroma 三模态向量 · Neo4j 图谱 │
         │ Kafka CDC 事件 · SHA-256 受管图片资产                  │
         └────────────────────────────────────────────────────────┘
 ```
@@ -60,7 +60,7 @@ graph_upsert → delete_removed → commit → verify
 ```
 
 - 支持 PDF、DOCX、XLSX、CSV、PNG/JPG、TXT、Markdown、PPTX、HTML、JSON/JSONL、XML，共 11 类格式族。
-- Chunk 约 500 token、80 token overlap，并保留页码、工作表、章节、坐标、JSONPath/XPath 和 modality。
+- 检索子块约 350 token、50 token overlap，关联约 900/100 token 的父块；并保留页码、工作表、章节、坐标、JSONPath/XPath 和 modality。
 - `chunk_id` 由文档、来源单元、规范化内容及重复序号稳定生成；重传时未变化块保持原 ID。
 - 图片和扫描页始终走 OCR；视觉模型失败只记录降级，不使整份文档失败。
 
@@ -72,16 +72,16 @@ question + mode + top_k + document_ids
                     ▼
              validate → QueryPlan
                     │
-           ┌────────┴────────┐
-           ▼                 ▼
-  multimodal vector     Neo4j 1–3 hop
-  text/table/image       参数化子图检索
-           │                 │
-           └────────┬────────┘
+       ┌────────────┼────────────┐
+       ▼            ▼            ▼
+multimodal Dense  FTS5/BM25  Neo4j 1–3 hop
+text/table/image   精确词召回    参数化子图检索
+       └─────RRF────┘            │
+             └────────┬──────────┘
                     ▼
             strict weighted RRF
                     ▼
-       document rerank（最多 10 篇）
+       父块/邻块扩展 → document rerank（最多 10 篇）
                     ▼
         选中文档内复用查询向量二次检索
                     ▼
@@ -96,7 +96,7 @@ question + mode + top_k + document_ids
       citation 必须映射真实 chunk → finalize
 ```
 
-Chroma 使用 `knowledge_text_v2`、`knowledge_table_v2`、`knowledge_image_v2` 三个集合。文本与表格查询使用 BGE 文本向量，图片集合使用 VL 查询向量；集合内排名先归一化，再按 text `1.0`、table `0.95`、image `0.90` 做 RRF。向量结果与 Neo4j 结果继续用严格加权 RRF 融合，绝不执行 LLM 生成的任意 Cypher。
+Chroma 使用 `knowledge_text_v2`、`knowledge_table_v2`、`knowledge_image_v2` 三个集合。文本与表格查询使用 BGE 文本向量，图片集合使用 VL 查询向量；集合内排名先归一化，再按 text `1.0`、table `0.95`、image `0.90` 做 RRF。Dense 与 SQLite BM25 先按 `1.0/0.90` 融合，再与 Neo4j 结果按 `1.0/0.85` 做第二层严格加权 RRF，绝不直接相加异构原始分数，也不执行 LLM 生成的任意 Cypher。
 
 最终默认策略保留语义时间比较工具；实验性的通用 `ComparisonTool` 默认关闭，因为固定 100 题消融中它提高了证据召回，却降低了回答 EM。该工具可通过 `COMPARISON_TOOL_ENABLED=true` 单独复现实验。
 

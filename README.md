@@ -6,7 +6,7 @@ Neo4j 保存带来源的知识图谱，Kafka 传递增量事件，SQLite 保存�
 
 > 本次实现和验收只覆盖 `python/`。Java、Go、Web UI、认证、PGVector、Debezium 不在范围内。
 
-快速入口：[架构说明](docs/architecture.md) · [量化评测报告](docs/benchmark-report.md) · [5 分钟演示](docs/demo-guide.md) · [面试讲解](docs/interview-guide.md) · [简历写法](docs/resume-final.md)
+快速入口：[架构说明](docs/architecture.md) · [量化评测报告](docs/benchmark-report.md) · [5 分钟演示](docs/demo-guide.md) · [高频面试题](docs/interview-question-bank.md) · [面试讲解](docs/interview-guide.md) · [简历写法](docs/resume-final.md)
 
 ## 已实现能力
 
@@ -180,8 +180,10 @@ Watchdog 与管理 API 只生产事件，Kafka Consumer 才执行更新。同一
 `Qwen/Qwen3-VL-8B-Instruct` 以 `detail=low` 补充客观描述，失败自动降级到 OCR，不使整份
 文档失败。删除文档时会同步清理资产。
 
-默认约 500 token、80 token overlap 分块，并保留页码、章节、工作表、坐标、模态、版本和
-内容哈希。`chunk_id` 由文档、来源单元、规范化内容和重复序号确定，未变化块跨版本保持稳定。
+先按页、章节、工作表、幻灯片或结构化路径形成稳定来源单元，再生成约 350 token、50 token
+overlap 的检索子块，并为每个子块保存约 900/100 token 的父块。`chunk_id` 仍由文档、来源单元、
+规范化内容和重复序号确定，未变化块跨版本保持稳定；父块与相邻子块只用于精排上下文，不替换
+最终引用的原始子块。
 
 ### 独立向量化与 GraphRAG 融合
 
@@ -194,7 +196,9 @@ ChromaDB 使用三个 v2 集合：
 查询同时生成普通文本向量和 VL 文本查询向量，并行检索三个集合；集合内排名归一化后按
 文本 `1.0`、表格 `0.95`、图片 `0.90` 做加权 RRF，再与 Neo4j 子图结果融合。迁移期间仍可
 读取旧 `knowledge_chunks` 集合，但同一 chunk 不会因同时存在于新旧集合而重复加分。
-向量与图谱分支使用严格 Weighted RRF（默认权重 `1.0/0.85`），不混合不同来源的原始分数。
+文本检索额外使用 SQLite FTS5/BM25 召回产品编号、人名和错误码等精确词，与 Dense 结果按
+Weighted RRF（默认权重 `1.0/0.90`）融合；随后再与图谱分支按 `1.0/0.85` 融合，全程不直接
+相加不同来源的原始分数。
 融合后的 40 个候选由硅基流动 `BAAI/bge-reranker-v2-m3` 按必需证据槽位并行精排；精排排名与
 原始 Weighted-RRF 排名再次通过 RRF 融合，避免覆盖向量/图谱召回信号。系统复用首次生成的
 文本/VL 查询向量，只在最多 10 篇候选文档内二次检索。最终 Top-K 先覆盖必需证据槽位，再按
@@ -230,8 +234,8 @@ HTML 不访问外部资源，XML 禁止实体展开；解析失败返回明确 4
 
 | 项目 | 实测结果 |
 |---|---:|
-| 自动化测试 | 126 passed，1 个真实 API 用例按标记排除 |
-| 核心模块行覆盖率 | 87.94% |
+| 自动化测试 | 130 passed，1 个真实 API 用例按标记排除 |
+| 核心模块行覆盖率 | 85.19% |
 | Ruff | All checks passed |
 | Docker Compose | FastAPI、ChromaDB、Neo4j、Kafka 4/4 healthy |
 | Docker 11 格式端到端测试 | 1 passed（Fake 模型，不计费） |
@@ -251,6 +255,11 @@ Hybrid 的 All-evidence Hit@10 提升 `5.34 pp`，说明图候选提高了跨文
 下降 `2.67 pp`，其配对 bootstrap 95% CI 为 `[-10.67, 5.33] pp`，不支持“GraphRAG 显著提升
 回答准确率”的结论。完整设置、指标定义、版本消融与失败分析见
 [docs/benchmark-report.md](docs/benchmark-report.md)。
+
+Parent/Child、BM25 与邻域上下文升级已通过固定 10 题预检：新 Hybrid 的 Evidence Recall@10 为
+97.50%，All-evidence Hit@10 为 90.00%，但检索 p95 为 9.084 秒。该结果只作为方向性验证，尚未
+替换上表正式 100 题结论；详细口径和局限见
+[docs/retrieval-upgrade-v6-smoke.md](docs/retrieval-upgrade-v6-smoke.md)。
 
 CDC 性能和生产规模 API 压测尚未完成，因此本项目不声明“提升 22%”、“准确率 94%”、
 “更新效率提升 95%”或“支持千级文档实时问答”等未经验证的数字。
@@ -287,6 +296,16 @@ RRF_CONSTANT=60
 HYBRID_VECTOR_WEIGHT=1.0
 HYBRID_GRAPH_WEIGHT=0.85
 HYBRID_MAX_CHUNKS_PER_DOCUMENT=1
+LEXICAL_ENABLED=true
+LEXICAL_WEIGHT=0.90
+LEXICAL_CANDIDATE_K=40
+CONTEXT_WINDOW_ENABLED=true
+CONTEXT_NEIGHBOR_CHUNKS=1
+CONTEXT_WINDOW_MAX_CHARS=8000
+CHUNK_SIZE_TOKENS=350
+CHUNK_OVERLAP_TOKENS=50
+PARENT_CHUNK_SIZE_TOKENS=900
+PARENT_CHUNK_OVERLAP_TOKENS=100
 RERANK_ENABLED=true
 RERANK_MODEL=BAAI/bge-reranker-v2-m3
 RERANK_CANDIDATE_K=40

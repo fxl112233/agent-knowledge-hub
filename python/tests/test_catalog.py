@@ -66,3 +66,76 @@ async def test_catalog_failure_and_cleanup(tmp_path: Path) -> None:
     assert catalog.list_documents() == []
     assert catalog.delete_document("bad") == 1
     await catalog.close()
+
+
+@pytest.mark.asyncio
+async def test_catalog_lexical_search_context_window_and_delete(tmp_path: Path) -> None:
+    catalog = CatalogService(str(tmp_path / "catalog.sqlite3"))
+    await catalog.init()
+    version = catalog.begin_document(
+        doc_id="atlas",
+        file_name="atlas.md",
+        file_path=str(tmp_path / "atlas.md"),
+        mime_type="text/markdown",
+        content_hash="hash",
+    )
+    chunks = [
+        DocumentChunk(
+            content,
+            "atlas",
+            index,
+            DocType.MARKDOWN,
+            {
+                "source": "atlas.md",
+                "file_name": "atlas.md",
+                "section": "Ownership",
+                "parent_content": "Atlas is an internal platform owned by Alice.",
+                "parent_id": "parent-1",
+            },
+            identifier=f"chunk-{index}",
+            content_hash=f"hash-{index}",
+        )
+        for index, content in enumerate(
+            ["Atlas is an internal platform.", "Alice owns the platform.", "Revenue is 100."]
+        )
+    ]
+    catalog.commit_document("atlas", "hash", version, chunks)
+
+    matches = catalog.search_chunks("Alice Atlas", limit=5)
+    assert matches
+    assert {item["doc_id"] for item in matches} == {"atlas"}
+    windows = catalog.get_context_windows(["chunk-1"], neighbor_count=1)
+    assert "Atlas is an internal platform" in windows["chunk-1"]
+    assert "Revenue is 100" in windows["chunk-1"]
+    assert catalog.get_stats()["lexical_chunks"] == 3
+
+    chinese_version = catalog.begin_document(
+        doc_id="chinese",
+        file_name="研发手册.md",
+        file_path=str(tmp_path / "研发手册.md"),
+        mime_type="text/markdown",
+        content_hash="chinese-hash",
+    )
+    chinese_chunk = DocumentChunk(
+        "星河公司研发阿尔法项目。",
+        "chinese",
+        0,
+        DocType.MARKDOWN,
+        {"source": "研发手册.md", "file_name": "研发手册.md"},
+        identifier="chinese-1",
+        content_hash="chinese-content-hash",
+    )
+    catalog.commit_document("chinese", "chinese-hash", chinese_version, [chinese_chunk])
+    chinese_matches = catalog.search_chunks(
+        "谁研发了阿尔法项目？",
+        limit=5,
+        document_ids=["chinese"],
+    )
+    assert [item["chunk_id"] for item in chinese_matches] == ["chinese-1"]
+
+    assert catalog.delete_document("atlas") == 1
+    assert catalog.search_chunks("Alice Atlas", limit=5) == []
+    assert catalog.get_stats()["lexical_chunks"] == 1
+    assert catalog.delete_document("chinese") == 1
+    assert catalog.get_stats()["lexical_chunks"] == 0
+    await catalog.close()

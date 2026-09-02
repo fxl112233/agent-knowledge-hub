@@ -123,11 +123,13 @@ class GraphRAGPipeline:
         knowledge_graph: KnowledgeGraphService,
         llm: Any | None = None,
         reranker: SiliconFlowReranker | None = None,
+        catalog: Any | None = None,
     ) -> None:
         self.vector_store = vector_store
         self.knowledge_graph = knowledge_graph
         self.llm = llm or self._build_llm()
         self.reranker = reranker
+        self.catalog = catalog
 
     @staticmethod
     def _build_llm() -> Any | None:
@@ -312,13 +314,26 @@ class GraphRAGPipeline:
         mode = RetrievalMode(mode)
         started = time.perf_counter()
         if mode == RetrievalMode.VECTOR:
-            contexts, modality_counts, embedding_ms, query_vectors = await self._vector_search_queries(
-                plan,
-                candidate_k,
-                document_ids,
+            vector_task = asyncio.create_task(
+                self._vector_search_queries(plan, candidate_k, document_ids)
+            )
+            lexical_task = (
+                asyncio.create_task(self._lexical_search_queries(plan, document_ids))
+                if settings.lexical_enabled and self.catalog is not None
+                else None
+            )
+            dense_contexts, modality_counts, embedding_ms, query_vectors = await vector_task
+            lexical_contexts = await lexical_task if lexical_task else []
+            contexts = self._weighted_rrf_fuse(
+                (
+                    ("vector", dense_contexts, settings.hybrid_vector_weight),
+                    ("lexical", lexical_contexts, settings.lexical_weight),
+                )
             )
             trace = [
                 *(f"{name}_candidates:{count}" for name, count in sorted(modality_counts.items())),
+                f"dense_candidates:{len(dense_contexts)}",
+                f"lexical_candidates:{len(lexical_contexts)}",
                 f"vector_candidates:{len(contexts)}",
             ]
             return RetrievalResult(
@@ -399,6 +414,10 @@ class GraphRAGPipeline:
                 query_vectors=vector.query_vectors,
                 document_ids=list(document_ids or []),
             )
+        candidates, context_count, context_error = await self._enrich_context_windows(candidates)
+        trace.append(f"context_windows:{context_count}")
+        if context_error:
+            trace.append(f"context_windows_fallback:{context_error}")
         doc_ranked, doc_rerank_ms, doc_error = await self._rerank_contexts(
             question,
             plan,
@@ -437,7 +456,13 @@ class GraphRAGPipeline:
         local_pool = self._deduplicate([*selected_initial, *local_contexts])[
             : settings.rerank_max_local_candidates
         ]
+        local_pool, local_context_count, local_context_error = await self._enrich_context_windows(
+            local_pool
+        )
         trace.append(f"document_refine_candidates:{len(local_pool)}")
+        trace.append(f"document_refine_context_windows:{local_context_count}")
+        if local_context_error:
+            trace.append(f"document_refine_context_fallback:{local_context_error}")
         chunk_ranked, chunk_rerank_ms, chunk_error = await self._rerank_contexts(
             question,
             plan,
@@ -574,6 +599,46 @@ class GraphRAGPipeline:
         contexts = self._merge_query_results(result_sets, slot_ids)
         return contexts, counts, (time.perf_counter() - started) * 1000, query_vectors
 
+    async def _lexical_search_queries(
+        self,
+        plan: QueryPlan,
+        document_ids: list[str] | None,
+    ) -> list[GraphRAGContext]:
+        if self.catalog is None:
+            return []
+        queries = plan.queries or [slot.query for slot in plan.evidence_slots]
+        slot_ids = self._query_slot_ids(plan, queries)
+        values = await asyncio.gather(
+            *(
+                asyncio.to_thread(
+                    self.catalog.search_chunks,
+                    query,
+                    limit=settings.lexical_candidate_k,
+                    document_ids=document_ids,
+                )
+                for query in queries
+            ),
+            return_exceptions=True,
+        )
+        result_sets: list[list[tuple[dict[str, Any], float]]] = []
+        for value in values:
+            if isinstance(value, BaseException):
+                result_sets.append([])
+                continue
+            documents: list[tuple[dict[str, Any], float]] = []
+            for row in value:
+                metadata = dict(row.get("metadata") or {})
+                document = {
+                    "chunk_id": row.get("chunk_id", ""),
+                    "doc_id": row.get("doc_id", ""),
+                    "content": row.get("content", ""),
+                    "source": metadata.get("source", ""),
+                    "metadata": metadata,
+                }
+                documents.append((document, float(row.get("score", 0.0))))
+            result_sets.append(documents)
+        return self._merge_query_results(result_sets, slot_ids, source_type="lexical")
+
     async def _refine_documents(
         self,
         plan: QueryPlan,
@@ -605,6 +670,7 @@ class GraphRAGPipeline:
         cls,
         result_sets: list[list[tuple[dict[str, Any], float]]],
         slot_ids: list[str],
+        source_type: str = "vector",
     ) -> list[GraphRAGContext]:
         combined: dict[str, dict[str, Any]] = {}
         for query_index, results in enumerate(result_sets):
@@ -619,7 +685,7 @@ class GraphRAGPipeline:
                 if key in seen:
                     continue
                 seen.add(key)
-                context = cls._document_to_context(document, 0.0)
+                context = cls._document_to_context(document, 0.0, source_type=source_type)
                 entry = combined.setdefault(
                     key,
                     {"context": context, "rrf": 0.0, "slots": set()},
@@ -638,27 +704,32 @@ class GraphRAGPipeline:
                     context.doc_id,
                     context.content,
                     context.source,
-                    "vector",
+                    source_type,
                     score,
                     {
                         **context.metadata,
                         "matched_slot_ids": sorted(value["slots"]),
                         "rrf_score": score,
-                        "retrieval_sources": ["vector"],
+                        "retrieval_sources": [source_type],
                     },
                 )
             )
         return sorted(output, key=lambda item: (-item.score, item.chunk_id))
 
     @staticmethod
-    def _document_to_context(document: dict[str, Any], score: float) -> GraphRAGContext:
+    def _document_to_context(
+        document: dict[str, Any],
+        score: float,
+        *,
+        source_type: str = "vector",
+    ) -> GraphRAGContext:
         metadata = dict(document.get("metadata") or {})
         return GraphRAGContext(
             chunk_id=str(document.get("chunk_id") or metadata.get("chunk_id", "")),
             doc_id=str(document.get("doc_id") or metadata.get("doc_id", "")),
             content=str(document.get("content", "")),
             source=str(document.get("source", "")),
-            source_type="vector",
+            source_type=source_type,
             score=float(score),
             metadata=metadata,
         )
@@ -819,7 +890,47 @@ class GraphRAGPipeline:
         file_name = context.metadata.get("file_name") or context.source
         page = context.metadata.get("page") or ""
         sheet = context.metadata.get("sheet") or ""
-        return f"file={file_name} page={page} sheet={sheet}\n{context.content}"[:8000]
+        content = str(context.metadata.get("context_window") or context.content)
+        return f"file={file_name} page={page} sheet={sheet}\n{content}"[:8000]
+
+    async def _enrich_context_windows(
+        self,
+        contexts: list[GraphRAGContext],
+    ) -> tuple[list[GraphRAGContext], int, str]:
+        if (
+            not contexts
+            or not settings.context_window_enabled
+            or self.catalog is None
+            or not hasattr(self.catalog, "get_context_windows")
+        ):
+            return contexts, 0, ""
+        try:
+            windows = await asyncio.to_thread(
+                self.catalog.get_context_windows,
+                [context.chunk_id for context in contexts],
+                neighbor_count=settings.context_neighbor_chunks,
+                max_chars=settings.context_window_max_chars,
+            )
+        except Exception as exc:
+            return contexts, 0, type(exc).__name__
+        output: list[GraphRAGContext] = []
+        for context in contexts:
+            window = windows.get(context.chunk_id)
+            metadata = dict(context.metadata)
+            if window:
+                metadata["context_window"] = window
+            output.append(
+                GraphRAGContext(
+                    context.chunk_id,
+                    context.doc_id,
+                    context.content,
+                    context.source,
+                    context.source_type,
+                    context.score,
+                    metadata,
+                )
+            )
+        return output, sum(bool(windows.get(context.chunk_id)) for context in contexts), ""
 
     @staticmethod
     def _rerank_slot_count(plan: QueryPlan) -> int:
@@ -874,14 +985,31 @@ class GraphRAGPipeline:
         vector_weight: float | None = None,
         graph_weight: float | None = None,
     ) -> list[GraphRAGContext]:
+        return GraphRAGPipeline._weighted_rrf_fuse(
+            (
+                (
+                    "vector",
+                    vector_results,
+                    settings.hybrid_vector_weight if vector_weight is None else vector_weight,
+                ),
+                (
+                    "graph",
+                    graph_results,
+                    settings.hybrid_graph_weight if graph_weight is None else graph_weight,
+                ),
+            ),
+            constant=constant,
+        )
+
+    @staticmethod
+    def _weighted_rrf_fuse(
+        sources: tuple[tuple[str, list[GraphRAGContext], float], ...],
+        *,
+        constant: int | None = None,
+    ) -> list[GraphRAGContext]:
         constant = settings.rrf_constant if constant is None else constant
-        vector_weight = settings.hybrid_vector_weight if vector_weight is None else vector_weight
-        graph_weight = settings.hybrid_graph_weight if graph_weight is None else graph_weight
         combined: dict[str, dict[str, Any]] = {}
-        for source_name, results, weight in (
-            ("vector", vector_results, vector_weight),
-            ("graph", graph_results, graph_weight),
-        ):
+        for source_name, results, weight in sources:
             deduplicated: dict[str, GraphRAGContext] = {}
             for context in sorted(results, key=lambda item: item.score, reverse=True):
                 key = context.chunk_id or f"{context.doc_id}:{context.content[:80]}"
@@ -894,6 +1022,9 @@ class GraphRAGPipeline:
                 )
                 entry["rrf"] += weight / (constant + rank)
                 entry["sources"].add(source_name)
+                entry["sources"].update(
+                    context.metadata.get("retrieval_sources", [context.source_type])
+                )
                 entry["slots"].update(context.metadata.get("matched_slot_ids", []))
                 if len(context.content) > len(entry["context"].content):
                     entry["context"] = context

@@ -278,7 +278,9 @@ class VectorStoreService:
             vectors.extend(
                 await self._embedding().aembed_documents(texts[start : start + settings.embedding_batch_size])
             )
-        await self._upsert(collection, chunks, vectors, texts)
+        # Contextual prefixes improve retrieval but citations must keep the
+        # original child text instead of exposing the synthetic prefix.
+        await self._upsert(collection, chunks, vectors, [chunk.content for chunk in chunks])
 
     async def _upsert_image_collection(self, collection: Any, chunks: list[DocumentChunk]) -> None:
         paths = [str(chunk.metadata.get("asset_path", "")) for chunk in chunks]
@@ -309,16 +311,21 @@ class VectorStoreService:
 
     @staticmethod
     def _embedding_text(chunk: DocumentChunk) -> str:
-        if str(chunk.metadata.get("modality")) != "table":
-            return chunk.content
+        metadata = chunk.metadata
         location = " ".join(
             value
             for value in (
-                f"sheet={chunk.metadata.get('sheet')}" if chunk.metadata.get("sheet") else "",
-                f"rows={chunk.metadata.get('row_start')}-{chunk.metadata.get('row_end')}"
-                if chunk.metadata.get("row_start")
+                f"file={metadata.get('file_name')}" if metadata.get("file_name") else "",
+                f"section={metadata.get('section')}" if metadata.get("section") else "",
+                f"title={metadata.get('title')}" if metadata.get("title") else "",
+                f"page={metadata.get('page')}" if metadata.get("page") else "",
+                f"slide={metadata.get('slide')}" if metadata.get("slide") else "",
+                f"sheet={metadata.get('sheet')}" if metadata.get("sheet") else "",
+                f"rows={metadata.get('row_start')}-{metadata.get('row_end')}"
+                if metadata.get("row_start")
                 else "",
-                f"page={chunk.metadata.get('page')}" if chunk.metadata.get("page") else "",
+                f"json_path={metadata.get('json_path')}" if metadata.get("json_path") else "",
+                f"xpath={metadata.get('xpath')}" if metadata.get("xpath") else "",
             )
             if value
         )
@@ -333,6 +340,7 @@ class VectorStoreService:
             "source": str(chunk.metadata.get("source", "")),
             "file_name": str(chunk.metadata.get("file_name", "")),
             "unit_id": str(chunk.metadata.get("unit_id", "")),
+            "parent_id": str(chunk.metadata.get("parent_id", "")),
             "chunk_index": chunk.chunk_index,
             "version": int(chunk.metadata.get("version", 1)),
             "modality": str(chunk.metadata.get("modality") or chunk.metadata.get("kind") or "text"),
@@ -348,6 +356,9 @@ class VectorStoreService:
             "json_path",
             "xpath",
             "vision_fallback",
+            "section",
+            "title",
+            "chunk_level",
         ):
             value = chunk.metadata.get(key)
             if isinstance(value, str | int | float | bool) and value != "":

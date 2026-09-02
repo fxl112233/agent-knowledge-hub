@@ -105,12 +105,18 @@ class KnowledgeExtractAgent:
         last_error = ""
         for attempt in range(settings.llm_max_retries + 1):
             suffix = f"\n上次输出无效：{last_error}。请只输出合法 JSON。" if last_error else ""
-            response = await self.llm.ainvoke(
-                [
-                    {"role": "system", "content": EXTRACTION_PROMPT},
-                    {"role": "user", "content": f"来源块：{chunk_id}\n文本：\n{text}{suffix}"},
-                ]
-            )
+            try:
+                response = await self.llm.ainvoke(
+                    [
+                        {"role": "system", "content": EXTRACTION_PROMPT},
+                        {"role": "user", "content": f"来源块：{chunk_id}\n文本：\n{text}{suffix}"},
+                    ]
+                )
+            except Exception:
+                if attempt >= settings.llm_max_retries:
+                    raise
+                await asyncio.sleep(2**attempt)
+                continue
             try:
                 raw = self._response_text(response)
                 result = self._parse_response(raw, chunk_id)

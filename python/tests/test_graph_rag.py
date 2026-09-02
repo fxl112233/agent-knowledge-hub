@@ -109,6 +109,53 @@ async def test_hybrid_retrieval_falls_back_when_graph_backend_fails() -> None:
     assert "graph_search_failed:RuntimeError" in result.trace
 
 
+@pytest.mark.asyncio
+async def test_vector_retrieval_fuses_lexical_and_uses_context_windows() -> None:
+    class FakeCatalog:
+        def search_chunks(self, query: str, *, limit: int, document_ids=None):
+            assert query == "exact identifier ZX-42"
+            assert limit >= 4
+            assert document_ids == ["d3"]
+            return [
+                {
+                    "chunk_id": "c3",
+                    "doc_id": "d3",
+                    "content": "ZX-42 belongs to Carol",
+                    "metadata": {"source": "c.md", "file_name": "c.md"},
+                    "score": 1.0,
+                }
+            ]
+
+        def get_context_windows(self, chunk_ids, *, neighbor_count: int, max_chars: int):
+            assert neighbor_count >= 0
+            assert max_chars >= 1000
+            return {identifier: f"parent and neighbor for {identifier}" for identifier in chunk_ids}
+
+    class FilteredVectorStore(FakeVectorStore):
+        async def search(self, query: str, top_k: int, document_ids=None):
+            del query, top_k, document_ids
+            return []
+
+    pipeline = GraphRAGPipeline(
+        FilteredVectorStore(),
+        FakeGraph(),
+        llm=FakeChatModel([]),
+        catalog=FakeCatalog(),
+    )
+    result = await pipeline.retrieve(
+        "exact identifier ZX-42",
+        top_k=1,
+        mode="vector",
+        document_ids=["d3"],
+        plan=QueryPlan(queries=["exact identifier ZX-42"]),
+    )
+
+    assert [item.chunk_id for item in result.contexts] == ["c3"]
+    assert result.contexts[0].metadata["context_window"].startswith("parent and neighbor")
+    assert "lexical_candidates:1" in result.trace
+    assert "context_windows:1" in result.trace
+
+
 def test_rrf_deduplicates_chunks() -> None:
     context = GraphRAGContext("c", "d", "text", "x", "vector", 0.5)
     output = GraphRAGPipeline._rrf_fuse([context, context], [])

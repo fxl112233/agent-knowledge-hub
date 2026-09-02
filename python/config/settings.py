@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     hybrid_vector_weight: float = Field(default=1.0, gt=0, le=5)
     hybrid_graph_weight: float = Field(default=0.85, gt=0, le=5)
     hybrid_max_chunks_per_document: int = Field(default=1, ge=1, le=20)
+    lexical_enabled: bool = True
+    lexical_weight: float = Field(default=0.90, gt=0, le=5)
+    lexical_candidate_k: int = Field(default=40, ge=4, le=200)
+    context_window_enabled: bool = True
+    context_neighbor_chunks: int = Field(default=1, ge=0, le=3)
+    context_window_max_chars: int = Field(default=8000, ge=1000, le=30000)
     rerank_enabled: bool = True
     rerank_model: str = "BAAI/bge-reranker-v2-m3"
     rerank_candidate_k: int = Field(default=40, ge=4, le=200)
@@ -89,10 +95,12 @@ class Settings(BaseSettings):
     max_json_depth: int = 64
     max_structured_nodes: int = 200_000
     batch_ingest_concurrency: int = 2
-    knowledge_extraction_concurrency: int = Field(default=8, ge=1, le=32)
+    knowledge_extraction_concurrency: int = Field(default=4, ge=1, le=32)
 
-    chunk_size_tokens: int = 500
-    chunk_overlap_tokens: int = 80
+    chunk_size_tokens: int = 350
+    chunk_overlap_tokens: int = 50
+    parent_chunk_size_tokens: int = Field(default=900, ge=400, le=4000)
+    parent_chunk_overlap_tokens: int = Field(default=100, ge=0, le=1000)
     ocr_languages: str = "chi_sim+eng"
     ocr_min_text_chars: int = 40
     default_top_k: int = 8

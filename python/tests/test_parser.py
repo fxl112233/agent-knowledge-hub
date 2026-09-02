@@ -19,6 +19,18 @@ async def test_text_encoding_and_stable_chunk_ids(tmp_path: Path) -> None:
     assert len(first) > 1
     assert [chunk.chunk_id for chunk in first] == [chunk.chunk_id for chunk in second]
     assert all(chunk.metadata["version"] in {1, 2} for chunk in first + second)
+    assert all(chunk.metadata["chunk_level"] == "child" for chunk in first)
+    assert all(chunk.metadata["parent_id"] for chunk in first)
+    assert all(chunk.metadata["parent_content"] for chunk in first)
+    assert [chunk.metadata["parent_id"] for chunk in first] == [
+        chunk.metadata["parent_id"] for chunk in second
+    ]
+    assert all(
+        chunk.metadata["parent_token_start"] <= chunk.metadata["token_start"]
+        < chunk.metadata["token_end"] <= chunk.metadata["parent_token_end"]
+        or chunk.metadata["token_start"] < chunk.metadata["parent_token_end"]
+        for chunk in first
+    )
 
 
 @pytest.mark.asyncio

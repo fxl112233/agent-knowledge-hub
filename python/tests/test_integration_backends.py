@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 import uuid
@@ -73,7 +74,12 @@ async def test_real_sqlite_chroma_and_neo4j_round_trip(tmp_path: Path) -> None:
         assert set(await vector.get_document_chunks(doc_id)) == expected_ids
         assert set(await graph.get_document_chunks(doc_id)) == expected_ids
 
-        vector_hits = await vector.search("谁研发了阿尔法项目？", document_ids=[doc_id])
+        vector_hits = []
+        for _attempt in range(5):
+            vector_hits = await vector.search("谁研发了阿尔法项目？", document_ids=[doc_id])
+            if vector_hits:
+                break
+            await asyncio.sleep(0.2)
         graph_hits = await graph.graph_search(["星河公司"], document_ids=[doc_id])
         assert vector_hits[0][0]["doc_id"] == doc_id
         assert graph_hits[0]["doc_id"] == doc_id

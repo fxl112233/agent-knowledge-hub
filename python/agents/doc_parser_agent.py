@@ -807,11 +807,51 @@ class DocParserAgent:
     ) -> list[DocumentChunk]:
         chunks: list[DocumentChunk] = []
         occurrences: defaultdict[tuple[str, str], int] = defaultdict(int)
+        parent_occurrences: defaultdict[tuple[str, str], int] = defaultdict(int)
         for unit in units:
+            parent_windows: list[dict[str, Any]] = []
+            for parent_content, parent_start, parent_end in self._token_windows(
+                unit.content,
+                size=settings.parent_chunk_size_tokens,
+                overlap=settings.parent_chunk_overlap_tokens,
+            ):
+                parent_normalized = self._normalize(parent_content)
+                if not parent_normalized:
+                    continue
+                parent_hash = hashlib.sha256(parent_normalized.encode("utf-8")).hexdigest()
+                parent_key = (unit.unit_id, parent_hash)
+                parent_occurrence = parent_occurrences[parent_key]
+                parent_occurrences[parent_key] += 1
+                parent_id = hashlib.sha256(
+                    f"{doc_id}|parent|{unit.unit_id}|{parent_hash}|{parent_occurrence}".encode()
+                ).hexdigest()[:32]
+                parent_windows.append(
+                    {
+                        "parent_id": parent_id,
+                        "content": parent_content.strip(),
+                        "token_start": parent_start,
+                        "token_end": parent_end,
+                    }
+                )
+
             for content, token_start, token_end in self._token_windows(unit.content):
                 normalized = self._normalize(content)
                 if not normalized:
                     continue
+                parent = max(
+                    parent_windows,
+                    key=lambda item: max(
+                        0,
+                        min(token_end, int(item["token_end"]))
+                        - max(token_start, int(item["token_start"])),
+                    ),
+                    default={
+                        "parent_id": "",
+                        "content": content.strip(),
+                        "token_start": token_start,
+                        "token_end": token_end,
+                    },
+                )
                 content_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
                 occurrence_key = (unit.unit_id, content_hash)
                 occurrence = occurrences[occurrence_key]
@@ -826,6 +866,11 @@ class DocParserAgent:
                     "unit_id": unit.unit_id,
                     "token_start": token_start,
                     "token_end": token_end,
+                    "parent_id": parent["parent_id"],
+                    "parent_content": parent["content"],
+                    "parent_token_start": parent["token_start"],
+                    "parent_token_end": parent["token_end"],
+                    "chunk_level": "child",
                     "version": version,
                 }
                 chunks.append(
@@ -841,14 +886,21 @@ class DocParserAgent:
                 )
         return chunks
 
-    def _token_windows(self, text: str) -> list[tuple[str, int, int]]:
+    def _token_windows(
+        self,
+        text: str,
+        *,
+        size: int | None = None,
+        overlap: int | None = None,
+    ) -> list[tuple[str, int, int]]:
+        size = size or settings.chunk_size_tokens
+        overlap = settings.chunk_overlap_tokens if overlap is None else overlap
+        overlap = min(overlap, size - 1)
         try:
             import tiktoken
 
             encoding = tiktoken.get_encoding("cl100k_base")
             tokens = encoding.encode(text)
-            size = settings.chunk_size_tokens
-            overlap = min(settings.chunk_overlap_tokens, size - 1)
             windows: list[tuple[str, int, int]] = []
             start = 0
             while start < len(tokens):
@@ -862,8 +914,6 @@ class DocParserAgent:
             words = re.findall(r"\S+", text)
             if not words:
                 return []
-            size = settings.chunk_size_tokens
-            overlap = min(settings.chunk_overlap_tokens, size - 1)
             windows = []
             start = 0
             while start < len(words):

@@ -49,6 +49,7 @@ class AppContainer:
             knowledge_graph=self.knowledge_graph,
             llm=self.extractor.llm,
             reranker=self.reranker,
+            catalog=self.catalog,
         )
         self.update_agent = KnowledgeUpdateAgent(self.ingestion, self.catalog)
         self.workflows: dict[str, Any] = {}

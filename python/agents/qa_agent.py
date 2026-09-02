@@ -102,6 +102,7 @@ class QAAgent:
         pipeline: GraphRAGPipeline | None = None,
         llm: Any | None = None,
         reranker: Any | None = None,
+        catalog: Any | None = None,
         temporal_tool: TemporalComparisonTool | None = None,
         comparison_tool: ComparisonVerificationTool | None = None,
     ) -> None:
@@ -111,6 +112,7 @@ class QAAgent:
             knowledge_graph,
             llm=self.llm,
             reranker=reranker,
+            catalog=catalog,
         )
         self.temporal_tool = temporal_tool or (
             TemporalComparisonTool(self.llm) if self.llm is not None else None

@@ -126,6 +126,35 @@ async def test_vector_store_crud_and_filter_metadata() -> None:
 
 
 @pytest.mark.asyncio
+async def test_contextual_embedding_keeps_raw_citation_document() -> None:
+    embeddings = FakeEmbedding()
+    store = VectorStoreService(embeddings)
+    collection = FakeCollection()
+    store._store = collection
+    chunk = DocumentChunk(
+        "Alice owns Atlas.",
+        "doc",
+        0,
+        DocType.MARKDOWN,
+        {
+            "source": "handbook.md",
+            "file_name": "handbook.md",
+            "section": "Ownership",
+            "parent_id": "parent-1",
+            "version": 1,
+        },
+        identifier="child-1",
+    )
+
+    await store.add_chunks([chunk])
+
+    assert "file=handbook.md" in embeddings.document_batches[0][0]
+    assert "section=Ownership" in embeddings.document_batches[0][0]
+    assert collection.values["child-1"]["document"] == "Alice owns Atlas."
+    assert collection.values["child-1"]["metadata"]["parent_id"] == "parent-1"
+
+
+@pytest.mark.asyncio
 async def test_vector_init_delete_chunks_and_unhealthy(monkeypatch: pytest.MonkeyPatch) -> None:
     collection = FakeCollection()
 

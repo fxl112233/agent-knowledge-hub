@@ -36,3 +36,27 @@ async def test_structured_extraction_retries_deduplicates_and_adds_provenance() 
 def test_parser_rejects_non_object() -> None:
     with pytest.raises(ValueError):
         KnowledgeExtractAgent._parse_response("[]", "chunk")
+
+
+@pytest.mark.asyncio
+async def test_structured_extraction_retries_transport_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FlakyModel(FakeChatModel):
+        attempts = 0
+
+        async def ainvoke(self, messages, **kwargs):
+            self.attempts += 1
+            if self.attempts < 3:
+                raise RuntimeError("provider unavailable")
+            return await super().ainvoke(messages, **kwargs)
+
+    async def no_sleep(_delay: float) -> None:
+        return None
+
+    monkeypatch.setattr("agents.knowledge_extract_agent.asyncio.sleep", no_sleep)
+    llm = FlakyModel([json.dumps({"entities": [], "relations": [], "events": []})])
+    result = await KnowledgeExtractAgent(llm=llm).extract_single("text", "chunk")
+
+    assert result.source_chunk_id == "chunk"
+    assert llm.attempts == 3
