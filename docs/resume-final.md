@@ -18,7 +18,7 @@
 - 实现多模态 RAG 管道，统一处理 PDF、DOCX、XLSX、CSV、PPTX、图片、HTML、JSON、XML 等 11 类格式族；结合 OCR 与 Qwen3-VL 处理图片和扫描页，将文本、结构化表格、原始图片分别向量化并执行加权融合检索。
 - 基于 Neo4j 构建带 Chunk 来源的知识图谱，融合 Chroma 多模态向量召回、参数化 1–3 跳子图检索、严格加权 RRF、BGE 两级精排和文档内二次检索；固定 100 题配对实验中，Hybrid 将 All-evidence Hit@10 从 45.33% 提升至 50.67%。
 - 设计 Watchdog/API → Kafka → Consumer 的 CDC 链路，利用稳定 Chunk ID 计算 added/changed/deleted/unchanged，只处理变化内容；通过事件状态机、幂等消费和一致性修复协调 SQLite、ChromaDB、Neo4j。
-- 建立可复现评测与工程质量体系，支持固定分层采样、查询计划缓存、断点续跑及 bootstrap 95% CI；126 个自动测试覆盖工作流路由、多格式解析、上传安全、Rerank 降级、多模态检索和 CDC 一致性，核心模块行覆盖率 87.94%。
+- 建立可复现评测与工程质量体系，支持固定分层采样、查询计划缓存、断点续跑及 bootstrap 95% CI；130 个自动测试覆盖工作流路由、多格式解析、上传安全、Rerank 降级、多模态检索和 CDC 一致性，核心模块行覆盖率 85.19%。
 
 ## 面试时主动说明
 

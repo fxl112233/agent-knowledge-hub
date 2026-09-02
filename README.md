@@ -345,7 +345,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\pytest --cov=agents --cov=api --cov=orchestrator --cov=services
 ```
 
-CI 使用 Fake Chat、Fake Embedding、Fake Vision 和 Fake VL Embedding，不需要真实密钥。
+自动化测试使用 Fake Chat、Fake Embedding、Fake Vision 和 Fake VL Embedding，不需要真实密钥。
 
 ## API
 
